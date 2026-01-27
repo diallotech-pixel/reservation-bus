@@ -11,7 +11,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
-// Configuration des sessions
 app.use(session({
   secret: 'votre_secret_key_123',
   resave: false,
@@ -19,7 +18,6 @@ app.use(session({
   cookie: { maxAge: 1000 * 60 * 60 * 24 }
 }));
 
-// Middleware pour vérifier si l'utilisateur est connecté
 function verifierConnexion(req, res, next) {
   if (!req.session.utilisateur_id) {
     return res.redirect('/login');
@@ -27,124 +25,21 @@ function verifierConnexion(req, res, next) {
   next();
 }
 
-// Page d'inscription
-app.get('/inscription', (req, res) => {
-  res.render('inscription');
-});
-
-// Traiter l'inscription
-app.post('/inscription', async (req, res) => {
-  try {
-    const { telephone, mot_de_passe, nom_complet } = req.body;
-    
-    // Vérifier que tous les champs sont remplis
-    if (!telephone || !mot_de_passe || !nom_complet) {
-      return res.send('Tous les champs sont obligatoires');
-    }
-
-    const connection = await pool.getConnection();
-
-    // Vérifier si le téléphone existe déjà
-    const [utilisateur_existe] = await connection.query(
-      'SELECT id FROM utilisateurs WHERE telephone = ?',
-      [telephone]
-    );
-
-    if (utilisateur_existe.length > 0) {
-      connection.release();
-      return res.send('Ce numéro de téléphone est déjà utilisé');
-    }
-
-    // Chiffrer le mot de passe
-    const motDePasseChiffre = chiffrerMotDePasse(mot_de_passe);
-
-    // Insérer le nouvel utilisateur
-    await connection.query(
-      'INSERT INTO utilisateurs (telephone, mot_de_passe, nom_complet) VALUES (?, ?, ?)',
-      [telephone, motDePasseChiffre, nom_complet]
-    );
-
-    connection.release();
-    res.redirect('/login');
-  } catch (error) {
-    console.error('Erreur :', error);
-    res.send('Erreur serveur');
-  }
-});
-
-// Page de connexion
-app.get('/login', (req, res) => {
-  res.render('login');
-});
-
-// Traiter la connexion
-app.post('/login', async (req, res) => {
-  try {
-    const { telephone, mot_de_passe } = req.body;
-
-    const connection = await pool.getConnection();
-
-    // Chercher l'utilisateur par téléphone
-    const [utilisateurs] = await connection.query(
-      'SELECT id, nom_complet, mot_de_passe FROM utilisateurs WHERE telephone = ?',
-      [telephone]
-    );
-
-    connection.release();
-
-    // Vérifier si l'utilisateur existe
-    if (utilisateurs.length === 0) {
-      return res.send('Téléphone ou mot de passe incorrect');
-    }
-
-    const utilisateur = utilisateurs[0];
-
-    // Vérifier le mot de passe
-    const motDePasseChiffre = chiffrerMotDePasse(mot_de_passe);
-    if (utilisateur.mot_de_passe !== motDePasseChiffre) {
-      return res.send('Téléphone ou mot de passe incorrect');
-    }
-
-    // Créer la session
-    req.session.utilisateur_id = utilisateur.id;
-    req.session.nom_complet = utilisateur.nom_complet;
-    req.session.telephone = telephone;
-
-    res.redirect('/');
-  } catch (error) {
-    console.error('Erreur :', error);
-    res.send('Erreur serveur');
-  }
-});
-
-// Déconnexion
-app.get('/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/login');
-});
-
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
-app.set('view engine', 'ejs');
-
 app.get('/', async (req, res) => {
   try {
-    // Vérifier si l'utilisateur est connecté
     if (!req.session.utilisateur_id) {
       return res.redirect('/login');
     }
 
-    const connection = await pool.getConnection();
-    const [trajets] = await connection.query(`
+    const result = await pool.query(`
       SELECT t.id, b.numero, b.capacite, b.prix, t.depart, t.arrivee, t.date, t.heure
       FROM trajets t
       JOIN bus b ON t.bus_id = b.id
       ORDER BY t.date, t.heure
     `);
-    connection.release();
     
     res.render('index', { 
-      trajets,
+      trajets: result.rows,
       utilisateur: req.session
     });
   } catch (error) {
@@ -155,33 +50,30 @@ app.get('/', async (req, res) => {
 
 app.get('/reserver/:trajet_id', verifierConnexion, async (req, res) => {
   try {
-    const connection = await pool.getConnection();
-    const [trajet] = await connection.query(`
+    const result = await pool.query(`
       SELECT t.id, b.id as bus_id, b.numero, b.capacite, b.prix, t.depart, t.arrivee, t.date, t.heure
       FROM trajets t
       JOIN bus b ON t.bus_id = b.id
-      WHERE t.id = ?
+      WHERE t.id = $1
     `, [req.params.trajet_id]);
     
-    if (trajet.length === 0) {
-      connection.release();
+    if (result.rows.length === 0) {
       return res.send('Trajet non trouvé');
     }
 
-    // Calculer les places restantes
-    const [reservations] = await connection.query(`
+    const trajet = result.rows[0];
+
+    const reservResult = await pool.query(`
       SELECT SUM(nombre_places) as places_reservees 
       FROM reservations 
-      WHERE trajet_id = ?
+      WHERE trajet_id = $1
     `, [req.params.trajet_id]);
 
-    const placesReservees = reservations[0].places_reservees || 0;
-    const placesDisponibles = trajet[0].capacite - placesReservees;
+    const placesReservees = reservResult.rows[0].places_reservees || 0;
+    const placesDisponibles = trajet.capacite - placesReservees;
 
-    connection.release();
-    
     res.render('reserver', { 
-      trajet: trajet[0],
+      trajet,
       placesDisponibles,
       utilisateur: req.session
     });
@@ -196,47 +88,38 @@ app.post('/confirmer-reservation', verifierConnexion, async (req, res) => {
     const { trajet_id, nombre_places } = req.body;
     const utilisateur_id = req.session.utilisateur_id;
     
-    const connection = await pool.getConnection();
-    
-    // Récupérer les informations du trajet et du bus
-    const [trajet_info] = await connection.query(`
+    const trajetResult = await pool.query(`
       SELECT t.id, t.bus_id, b.capacite
       FROM trajets t
       JOIN bus b ON t.bus_id = b.id
-      WHERE t.id = ?
+      WHERE t.id = $1
     `, [trajet_id]);
 
-    if (trajet_info.length === 0) {
-      connection.release();
+    if (trajetResult.rows.length === 0) {
       return res.send('Trajet non trouvé');
     }
 
-    const bus_id = trajet_info[0].bus_id;
-    const capacite = trajet_info[0].capacite;
+    const bus_id = trajetResult.rows[0].bus_id;
+    const capacite = trajetResult.rows[0].capacite;
 
-    // Compter les places déjà réservées pour CE TRAJET SPÉCIFIQUE
-    const [reservations] = await connection.query(`
+    const reservResult = await pool.query(`
       SELECT SUM(nombre_places) as places_reservees 
       FROM reservations 
-      WHERE trajet_id = ?
+      WHERE trajet_id = $1
     `, [trajet_id]);
     
-    const placesReservees = reservations[0].places_reservees || 0;
+    const placesReservees = reservResult.rows[0].places_reservees || 0;
     const placesDisponibles = capacite - placesReservees;
     
-    // Vérifier s'il y a assez de places
     if (parseInt(nombre_places) > placesDisponibles) {
-      connection.release();
       return res.send('Pas assez de places disponibles. Places disponibles : ' + placesDisponibles);
     }
     
-    // Insérer la réservation avec trajet_id
-    await connection.query(`
+    await pool.query(`
       INSERT INTO reservations (utilisateur_id, trajet_id, nombre_places, status)
-      VALUES (?, ?, ?, 'confirmée')
+      VALUES ($1, $2, $3, 'confirmée')
     `, [utilisateur_id, trajet_id, nombre_places]);
     
-    connection.release();
     res.redirect('/mes-reservations');
   } catch (error) {
     console.error('Erreur :', error);
@@ -248,20 +131,18 @@ app.get('/mes-reservations', verifierConnexion, async (req, res) => {
   try {
     const utilisateur_id = req.session.utilisateur_id;
     
-    const connection = await pool.getConnection();
-    const [reservations] = await connection.query(`
+    const result = await pool.query(`
       SELECT r.id, r.nombre_places, r.status, r.date_reservation,
              b.numero, b.prix, t.id as trajet_id, t.depart, t.arrivee, t.date, t.heure
       FROM reservations r
       JOIN trajets t ON r.trajet_id = t.id
       JOIN bus b ON t.bus_id = b.id
-      WHERE r.utilisateur_id = ?
+      WHERE r.utilisateur_id = $1
       ORDER BY r.date_reservation DESC
     `, [utilisateur_id]);
-    connection.release();
     
     res.render('mes-reservations', { 
-      reservations,
+      reservations: result.rows,
       utilisateur: req.session
     });
   } catch (error) {
@@ -272,14 +153,87 @@ app.get('/mes-reservations', verifierConnexion, async (req, res) => {
 
 app.get('/annuler/:reservation_id', verifierConnexion, async (req, res) => {
   try {
-    const connection = await pool.getConnection();
-    await connection.query('DELETE FROM reservations WHERE id = ?', [req.params.reservation_id]);
-    connection.release();
+    await pool.query('DELETE FROM reservations WHERE id = $1', [req.params.reservation_id]);
     res.redirect('/mes-reservations');
   } catch (error) {
     console.error('Erreur :', error);
     res.send('Erreur serveur');
   }
+});
+
+app.get('/inscription', (req, res) => {
+  res.render('inscription');
+});
+
+app.post('/inscription', async (req, res) => {
+  try {
+    const { telephone, mot_de_passe, nom_complet } = req.body;
+    
+    if (!telephone || !mot_de_passe || !nom_complet) {
+      return res.send('Tous les champs sont obligatoires');
+    }
+
+    const utilisateur_existe = await pool.query(
+      'SELECT id FROM utilisateurs WHERE telephone = $1',
+      [telephone]
+    );
+
+    if (utilisateur_existe.rows.length > 0) {
+      return res.send('Ce numéro de téléphone est déjà utilisé');
+    }
+
+    const motDePasseChiffre = chiffrerMotDePasse(mot_de_passe);
+
+    await pool.query(
+      'INSERT INTO utilisateurs (telephone, mot_de_passe, nom_complet) VALUES ($1, $2, $3)',
+      [telephone, motDePasseChiffre, nom_complet]
+    );
+
+    res.redirect('/login');
+  } catch (error) {
+    console.error('Erreur :', error);
+    res.send('Erreur serveur');
+  }
+});
+
+app.get('/login', (req, res) => {
+  res.render('login');
+});
+
+app.post('/login', async (req, res) => {
+  try {
+    const { telephone, mot_de_passe } = req.body;
+
+    const result = await pool.query(
+      'SELECT id, nom_complet, mot_de_passe FROM utilisateurs WHERE telephone = $1',
+      [telephone]
+    );
+
+    if (result.rows.length === 0) {
+      return res.send('Téléphone ou mot de passe incorrect');
+    }
+
+    const utilisateur = result.rows[0];
+
+    const motDePasseChiffre = chiffrerMotDePasse(mot_de_passe);
+    if (utilisateur.mot_de_passe !== motDePasseChiffre) {
+      return res.send('Téléphone ou mot de passe incorrect');
+    }
+
+    req.session.utilisateur_id = utilisateur.id;
+    req.session.nom_complet = utilisateur.nom_complet;
+    req.session.telephone = telephone;
+
+    res.redirect('/');
+  } catch (error) {
+    console.error('Erreur :', error);
+    res.send('Erreur serveur');
+  }
+});
+
+app.get('/logout', (req, res) => {
+  req.session.destroy();
+  res.redirect('/login');
 });
 
 const PORT = process.env.PORT || 3000;
