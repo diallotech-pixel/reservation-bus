@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Réservation de Bus</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Système de Réservation de Bus</h1>
+      <p>Kaolack - Dakar (Aller et Retour)</p>
+
+      <div class="menu">
+        <a href="/" class="btn btn-primary">Accueil</a>
+        <a href="/mes-reservations" class="btn btn-secondary"
+          >Mes Réservations</a
+        >
+        <span style="margin-left: auto">
+          Bienvenue, <strong><%= utilisateur.nom_complet %></strong>
+        </span>
+        <a href="/logout" class="btn btn-danger">Déconnexion</a>
+      </div>
+
+      <h2>Trajets Disponibles</h2>
+
+      <% if (trajets.length === 0) { %>
+      <p>Aucun trajet disponible</p>
+      <% } else { %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Bus</th>
+            <th>Départ</th>
+            <th>Arrivée</th>
+            <th>Date</th>
+            <th>Heure</th>
+            <th>Capacité</th>
+            <th>Prix</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% trajets.forEach(trajet => { %>
+          <tr>
+            <td><%= trajet.numero %></td>
+            <td><%= trajet.depart %></td>
+            <td><%= trajet.arrivee %></td>
+            <td><%= trajet.date %></td>
+            <td><%= trajet.heure %></td>
+            <td><%= trajet.capacite %> places</td>
+            <td><%= trajet.prix %> FCFA</td>
+            <td>
+              <a href="/reserver/<%= trajet.id %>" class="btn btn-success"
+                >Réserver</a
+              >
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+  </body>
+</html>

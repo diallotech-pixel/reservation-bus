@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Réserver un Trajet</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Réservation de Trajet</h1>
+
+      <div class="menu">
+        <a href="/" class="btn btn-primary">Accueil</a>
+        <a href="/mes-reservations" class="btn btn-secondary"
+          >Mes Réservations</a
+        >
+        <span style="margin-left: auto">
+          Bienvenue, <strong><%= utilisateur.nom_complet %></strong>
+        </span>
+        <a href="/logout" class="btn btn-danger">Déconnexion</a>
+      </div>
+
+      <div class="trajet-info">
+        <h2>Détails du Trajet</h2>
+        <p><strong>Bus :</strong> <%= trajet.numero %></p>
+        <p><strong>Départ :</strong> <%= trajet.depart %></p>
+        <p><strong>Arrivée :</strong> <%= trajet.arrivee %></p>
+        <p><strong>Date :</strong> <%= trajet.date %></p>
+        <p><strong>Heure :</strong> <%= trajet.heure %></p>
+        <p><strong>Capacité totale :</strong> <%= trajet.capacite %> places</p>
+        <p>
+          <strong>Places disponibles :</strong>
+          <span style="color: green; font-weight: bold"
+            ><%= placesDisponibles %></span
+          >
+          places
+        </p>
+        <p><strong>Prix par place :</strong> <%= trajet.prix %> FCFA</p>
+      </div>
+
+      <form action="/confirmer-reservation" method="POST" class="form">
+        <h2>Votre Réservation</h2>
+
+        <label for="nombre_places">Nombre de Places :</label>
+        <input
+          type="number"
+          id="nombre_places"
+          name="nombre_places"
+          min="1"
+          max="<%= placesDisponibles %>"
+          required
+        />
+
+        <input type="hidden" name="trajet_id" value="<%= trajet.id %>" />
+
+        <button type="submit" class="btn btn-success">
+          Confirmer la Réservation
+        </button>
+      </form>
+
+      <a href="/" class="btn btn-secondary">Retour</a>
+    </div>
+  </body>
+</html>

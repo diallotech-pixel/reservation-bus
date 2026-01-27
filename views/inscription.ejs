@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inscription</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Créer un Compte</h1>
+      <p>Inscription au système de réservation de bus</p>
+
+      <form action="/inscription" method="POST" class="form">
+        <label for="nom_complet">Nom Complet :</label>
+        <input type="text" id="nom_complet" name="nom_complet" required />
+
+        <label for="telephone">Numéro de Téléphone :</label>
+        <input type="tel" id="telephone" name="telephone" required />
+
+        <label for="mot_de_passe">Mot de Passe :</label>
+        <input type="password" id="mot_de_passe" name="mot_de_passe" required />
+
+        <button type="submit" class="btn btn-success">S'inscrire</button>
+      </form>
+
+      <p style="text-align: center; margin-top: 20px">
+        Vous avez déjà un compte ?
+        <a href="/login" style="color: #3498db; text-decoration: none"
+          >Connectez-vous ici</a
+        >
+      </p>
+    </div>
+  </body>
+</html>

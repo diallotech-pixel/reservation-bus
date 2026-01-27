@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connexion</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Connexion</h1>
+      <p>Connectez-vous à votre compte</p>
+
+      <form action="/login" method="POST" class="form">
+        <label for="telephone">Numéro de Téléphone :</label>
+        <input type="tel" id="telephone" name="telephone" required />
+
+        <label for="mot_de_passe">Mot de Passe :</label>
+        <input type="password" id="mot_de_passe" name="mot_de_passe" required />
+
+        <button type="submit" class="btn btn-success">Se Connecter</button>
+      </form>
+
+      <p style="text-align: center; margin-top: 20px">
+        Vous n'avez pas de compte ?
+        <a href="/inscription" style="color: #3498db; text-decoration: none"
+          >Inscrivez-vous ici</a
+        >
+      </p>
+    </div>
+  </body>
+</html>

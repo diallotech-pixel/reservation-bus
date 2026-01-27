@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mes Réservations</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Mes Réservations</h1>
+
+      <div class="menu">
+        <a href="/" class="btn btn-primary">Accueil</a>
+        <a href="/mes-reservations" class="btn btn-secondary"
+          >Mes Réservations</a
+        >
+        <span style="margin-left: auto">
+          Bienvenue, <strong><%= utilisateur.nom_complet %></strong>
+        </span>
+        <a href="/logout" class="btn btn-danger">Déconnexion</a>
+      </div>
+
+      <% if (reservations.length === 0) { %>
+      <p class="message-info">Vous n'avez aucune réservation</p>
+      <% } else { %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Bus</th>
+            <th>Trajet</th>
+            <th>Date du Trajet</th>
+            <th>Heure</th>
+            <th>Places</th>
+            <th>Prix Total</th>
+            <th>Statut</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% reservations.forEach(reservation => { %>
+          <tr>
+            <td><%= reservation.numero %></td>
+            <td><%= reservation.depart %> → <%= reservation.arrivee %></td>
+            <td><%= reservation.date %></td>
+            <td><%= reservation.heure %></td>
+            <td><%= reservation.nombre_places %></td>
+            <td><%= reservation.nombre_places * reservation.prix %> FCFA</td>
+            <td>
+              <span class="status <%= reservation.status %>"
+                ><%= reservation.status %></span
+              >
+            </td>
+            <td>
+              <a
+                href="/annuler/<%= reservation.id %>"
+                class="btn btn-danger"
+                onclick="return confirm('Êtes-vous sûr ?')"
+                >Annuler</a
+              >
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <% } %>
+
+      <a href="/" class="btn btn-primary">Retour à l'accueil</a>
+    </div>
+  </body>
+</html>
